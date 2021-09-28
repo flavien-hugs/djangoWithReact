@@ -1,74 +1,260 @@
-# DjangoWithReact
+# Django & React
 
-simple application django with ReactJs
+## Django
 
-Getting Started with Create React App
+We basically follow the [Django REST framework quickstart guide](http://www.django-rest-framework.org/tutorial/quickstart/) here.
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Create backend folder with a virtual Python environment:
 
-## Available Scripts
+```bash:
+mkdir backend
+cd backend
+pipenv install; pipenv shell
+```
 
-In the project directory, you can run:
+Install Django and Django REST framework:
 
-### `npm start`
+```bash:
+pipenv install django djangorestframework
+```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+Create Django project structure:
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+```bash:
+django-admin startproject backend .
+cd backend
+django-admin startapp todo
+cd ..
+```
 
-### `npm test`
+Create Django super user:
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```bash:
+./manage.py migrate
+./manage.py createsuperuser --email admin@example.com --username admin
+pw:supersecret
+```
 
-### `npm run build`
+Start Django:
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```bash:
+./manage.py runserver
+````
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Check if basic auth works:
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```bash
+curl -H 'Accept: application/json; indent=4' -u admin:admin123 http://127.0.0.1:8000/users/
+```
 
-### `npm run eject`
+Response should be:
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+```JavaScript
+[
+    {
+        "url": "http://127.0.0.1:8000/users/1/",
+        "username": "admin",
+        "email": "admin@example.com",
+        "groups": []
+    }
+]
+```
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+# Frontend
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+## Prerequisits
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+Install latest Node LTS. We recommend to use nvm:
 
-## Learn More
+```bash
+nvm install 8.9.4
+nvm use 8.9.4
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Install create-react-app globally:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```bash
+npm install -g create-react-app
+````
 
-### Code Splitting
+Create new react app:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+```bash
+ngx create-react-app frontend
+cd frontend
+````
 
-### Analyzing the Bundle Size
+Install dependencies:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+```bash
+npm install
+```
 
-### Making a Progressive Web App
+Start development server:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+```bash
+npm start
+````
 
-### Advanced Configuration
+Your browser should automatically open with 'localhost:3000' and show the create-react-app standard HTML view.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## Django CORS
 
-### Deployment
+Install corsheaders:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+```bash
+pipenv install django-cors-headers
+```
 
-### `npm run build` fails to minify
+settings.py:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+```python
+INSTALLED_APPS = (
+    ...
+    'corsheaders',
+    ...
+)
+````
+
+settings.py:
+
+```python
+MIDDLEWARE = [
+    ...
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    ...
+]````
+
+settings.py:
+
+```python
+CORS_ORIGIN_ALLOW_ALL = True
+````
+
+# Make React app query the Django Backend
+
+At first we create a state in the main React app to hold the information we fetch from the backend.
+
+Open 'frontend/src/App.js' and add a 'constructor' method to the 'App' class:
+
+```JavaScript
+class App extends Component {
+
+  constructor() {
+    super();
+    this.state = {
+      user: {}
+    };
+  }
+
+  ...
+}```
+
+Then we actually query the backend in the 'componentDidMount' method that is automatically called when the React component has been mounted;:
+
+```JavaScript
+
+class App extends Component {
+
+  ...
+
+  componentDidMount() {
+    fetch(
+      'http://127.0.0.1:8000/users/1',
+      {
+        headers: {
+          'Accept': 'application/json'
+        }
+      }
+    ).then((response) => response.json())
+    .then((responseData) => {
+      this.setState({ user: responseData });
+      console.log('Fetch from backend successful!')
+    })
+    .catch((error) => {
+      console.log('Error fetching and parsing data', error);
+    });
+  }
+  render() {
+    return (
+       ...
+       <p>Username: {this.state.user.username}</p>
+       <p>E-Mail: {this.state.user.email}</p>
+       ...
+     );
+   }
+```
+
+When the React app loads in your browser you will most likely see an error in your JavaScript console. This is caused by CORS preventing you from serving content from different origins. Install the CORS plugin for Chrome for development:
+
+https://chrome.google.com/webstore/detail/allow-control-allow-origi/nlfbmbojpeacfghkpbjhddihlkkiljbi
+
+
+# REST API communication
+
+Options:
+
+- fetch (ES6)
+- Superagent
+- Axios
+
+# Static Code Analysis
+
+eslint...
+
+# Automatic Code Formatting
+
+Add dependencies:
+
+```bash
+yarn add husky lint-staged prettier
+```
+
+package.json:
+
+```JavaScript
+  "dependencies": {
+    // ...
+  },
++ "lint-staged": {
++   "src/**/*.{js,jsx,json,css}": [
++     "prettier --single-quote --write",
++     "git add"
++   ]
++ },
+  "scripts": {
++   "precommit": "lint-staged",
+```
+
+Source and full tutorial:
+
+https://github.com/facebook/create-react-app/blob/master/packages/react-scripts/template/README.md#formatting-code-automatically
+
+## Prettier IDE support
+
+You should install a prettier plugin to your favorite editor.
+
+### Prettier formatter for Visual Studio Code
+
+Install Prettier formatter for Visual Studio Code:
+
+https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode
+
+vscode settings:
+
+```JavaScript
+// Set the default
+"editor.formatOnSave": false,
+// Enable per-language
+"[javascript]": {
+    "editor.formatOnSave": true
+}```
+
+
+# Router / Redux
+
+Add dependencies:
+
+```bash:
+yarn add redux react-redux react-router-dom react-router-redux@next redux-thunk history --save
